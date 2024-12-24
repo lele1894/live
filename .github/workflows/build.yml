@@ -1,7 +1,12 @@
 name: Build EXE
 
 on:
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: 1.0.0)'
+        required: true
+        default: '1.0.0'
 
 jobs:
   build:
@@ -21,6 +26,24 @@ jobs:
         pip install pyinstaller
         pip install -r requirements.txt
       
+    - name: Check Icon File
+      run: |
+        if (!(Test-Path "app.ico")) {
+          Write-Error "app.ico not found!"
+          exit 1
+        }
+      shell: pwsh
+      
+    - name: Update Version Info
+      run: |
+        $content = Get-Content file_version_info.txt -Raw
+        $content = $content -replace "filevers=\([^)]+\)", "filevers=${{ github.event.inputs.version.split('.')[0] }}, ${{ github.event.inputs.version.split('.')[1] }}, ${{ github.event.inputs.version.split('.')[2] }}, 0)"
+        $content = $content -replace "prodvers=\([^)]+\)", "prodvers=${{ github.event.inputs.version.split('.')[0] }}, ${{ github.event.inputs.version.split('.')[1] }}, ${{ github.event.inputs.version.split('.')[2] }}, 0)"
+        $content = $content -replace "FileVersion', u'[^']+", "FileVersion', u'${{ github.event.inputs.version }}"
+        $content = $content -replace "ProductVersion', u'[^']+", "ProductVersion', u'${{ github.event.inputs.version }}"
+        $content | Set-Content file_version_info.txt -Force
+      shell: pwsh
+      
     - name: Build EXE
       run: |
         pyinstaller --clean live.spec
@@ -31,8 +54,14 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v${{ github.run_number }}
-        release_name: Release v${{ github.run_number }}
+        tag_name: v${{ github.event.inputs.version }}
+        release_name: Release v${{ github.event.inputs.version }}
+        body: |
+          版本 ${{ github.event.inputs.version }} 发布
+          
+          ### 更新内容
+          - 版本更新
+          - 文件名修改为 live.exe
         draft: false
         prerelease: false
         
@@ -42,6 +71,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/简易直播软件.exe
-        asset_name: 简易直播软件.exe
+        asset_path: ./dist/live.exe
+        asset_name: live.exe
         asset_content_type: application/octet-stream 

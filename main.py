@@ -141,7 +141,7 @@ class StreamingApp(QMainWindow):
         camera_layout.addWidget(self.camera_combo)
         devices_layout.addLayout(camera_layout)
         
-        # 音频输入设��选择
+        # 音频输入设备选择
         audio_in_layout = QHBoxLayout()
         audio_in_label = QLabel("音频输入:")
         self.audio_in_combo = QComboBox()
@@ -172,7 +172,7 @@ class StreamingApp(QMainWindow):
         window_layout.addWidget(self.window_combo)
         devices_layout.addLayout(window_layout)
         
-        # 刷新按���
+        # 刷新按钮
         refresh_button = QPushButton("刷新设备列表")
         refresh_button.clicked.connect(self.refresh_devices)
         devices_layout.addWidget(refresh_button)
@@ -235,7 +235,7 @@ class StreamingApp(QMainWindow):
         recording_group.setLayout(recording_layout)
         control_layout.addWidget(recording_group)
         
-        # ��加所有组到右侧控制面板
+        # 添加所有组到右侧控制面板
         control_layout.addStretch()  # 添加弹性空间
         
         control_panel.setLayout(control_layout)
@@ -275,7 +275,7 @@ class StreamingApp(QMainWindow):
         self.ffmpeg_process = None
         self.stream_pipe = None
         
-        # 添加系统托盘图标支���
+        # 添加系统托盘图标支持
         self.tray_icon = None
         
         # 添加性能监控
@@ -397,7 +397,7 @@ class StreamingApp(QMainWindow):
                 width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
                 height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
             else:
-                raise Exception("无法获取视频尺寸")
+                raise Exception("无法获���视频尺寸")
             
             # 确保宽高都是2的倍数
             width = width - (width % 2)
@@ -468,7 +468,7 @@ class StreamingApp(QMainWindow):
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
 
-            # 建错误输出监控线程
+            # 错误输出监控线程
             def monitor_ffmpeg():
                 while self.ffmpeg_process and self.ffmpeg_process.poll() is None:
                     error_line = self.ffmpeg_process.stderr.readline()
@@ -519,81 +519,75 @@ class StreamingApp(QMainWindow):
                 self.stop_audio()
     
     def update_preview(self):
-        """更新预览、推流和录制"""
+        """更新预览画面"""
         try:
-            # 精确的帧率控制
-            current_time = time.time()
-            if hasattr(self, '_last_update'):
-                target_interval = 1.0 / 30  # 目标帧间隔（30fps）
-                elapsed = current_time - self._last_update
-                if elapsed < target_interval:
-                    return  # 直接返回，不使用sleep
-            self._last_update = current_time
-
             frame_obtained = False
-            try:
-                if hasattr(self, 'capture_region'):
-                    # 使用numpy优化图像处理
-                    with mss() as sct:
-                        # 直接获取BGR格式的图像
-                        screenshot = np.array(sct.grab(self.capture_region))
-                        
-                        # 如果分辨率太大，先缩放再处理
-                        if screenshot.shape[0] > 1080 or screenshot.shape[1] > 1920:
-                            scale = min(1920/screenshot.shape[1], 1080/screenshot.shape[0])
-                            new_size = (int(screenshot.shape[1] * scale), int(screenshot.shape[0] * scale))
-                            screenshot = cv2.resize(screenshot, new_size, interpolation=cv2.INTER_AREA)
-                        
-                        # 确保尺寸是2的倍数
-                        h, w = screenshot.shape[:2]
-                        w = w - (w % 2)
-                        h = h - (h % 2)
-                        if w != screenshot.shape[1] or h != screenshot.shape[0]:
-                            screenshot = screenshot[:h, :w]
-                        
-                        # BGR转换
-                        frame = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)
-                        record_frame = frame.copy()  # 推流用的��
-                        preview_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # 预览用的帧
-                        frame_obtained = True
-                        self.frame_count += 1
-
-                    # 推流时使用较小的缓冲区
-                    if self.streaming and self.ffmpeg_process:
-                        if self.ffmpeg_process.poll() is not None:
-                            print("FFmpeg进程已退出")
-                            error_output = self.ffmpeg_process.stderr.read().decode()
-                            print("FFmpeg错误输出:", error_output)
-                            self.stop_streaming()
-                            return
+            frame = None
+            
+            # 根据选择的捕获模式获取画面
+            capture_mode = self.window_combo.currentText()
+            
+            if capture_mode == "全屏":
+                # 全屏捕获
+                screenshot = self.screen_capture.grab(self.screen_capture.monitors[0])
+                frame = np.array(screenshot)
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+                frame_obtained = True
+                
+            elif capture_mode == "框选区域" and hasattr(self, 'capture_region'):
+                # 区域捕获
+                screenshot = self.screen_capture.grab(self.capture_region)
+                frame = np.array(screenshot)
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+                frame_obtained = True
+                
+            elif self.capture and self.capture.isOpened():
+                # 摄像头捕获
+                ret, frame = self.capture.read()
+                if ret:
+                    frame_obtained = True
+            
+            if frame_obtained and frame is not None:
+                # 调整预览尺寸
+                preview_size = self.preview_label.size()
+                aspect_ratio = frame.shape[1] / frame.shape[0]
+                
+                # 计算适合预览区域的尺寸
+                if preview_size.width() / preview_size.height() > aspect_ratio:
+                    preview_height = preview_size.height()
+                    preview_width = int(preview_height * aspect_ratio)
+                else:
+                    preview_width = preview_size.width()
+                    preview_height = int(preview_width / aspect_ratio)
+                
+                # 缩放图像
+                preview_frame = cv2.resize(frame, (preview_width, preview_height))
+                preview_frame = cv2.cvtColor(preview_frame, cv2.COLOR_BGR2RGB)
+                
+                # 创建预览图像
+                h, w, ch = preview_frame.shape
+                bytes_per_line = ch * w
+                preview_image = QImage(preview_frame.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+                
+                # 显示预览
+                self.preview_label.setPixmap(QPixmap.fromImage(preview_image))
+                
+                # 如果正在录制或直播，处理帧
+                if self.recording or self.streaming:
+                    if self.recording and self.video_writer:
+                        self.video_writer.write(frame)
+                    
+                    if self.streaming and hasattr(self, 'ffmpeg_process'):
                         try:
-                            # 直接写入整个帧数据
-                            self.ffmpeg_process.stdin.write(record_frame.tobytes())
-                            self.ffmpeg_process.stdin.flush()
+                            self.ffmpeg_process.stdin.write(frame.tobytes())
                         except Exception as e:
-                            print(f"推流时出错: {str(e)}")
-                            self.stop_streaming()
-                            return
-
-                    # 更新预览（使用QImage的快速路径）
-                    if frame_obtained:
-                        h, w = preview_frame.shape[:2]
-                        bytes_per_line = 3 * w
-                        image = QImage(preview_frame.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
-                        scaled_pixmap = QPixmap.fromImage(image).scaled(
-                            self.preview_label.size(), 
-                            Qt.AspectRatioMode.KeepAspectRatio,
-                            Qt.TransformationMode.FastTransformation  # 使用快速转换
-                        )
-                        self.preview_label.setPixmap(scaled_pixmap)
-
-            except Exception as e:
-                print(f"更新预览时出错: {str(e)}")
-                import traceback
-                traceback.print_exc()
-
+                            print(f"推流写入错误: {str(e)}")
+                
+                # 更新帧计数
+                self.frame_count += 1
+                
         except Exception as e:
-            print(f"预览更新主循环出错: {str(e)}")
+            print(f"更新预览时出错: {str(e)}")
     
     def get_audio_devices(self):
         """获取系统音频设备列表"""
@@ -748,7 +742,7 @@ class StreamingApp(QMainWindow):
             self.save_path_label.setText(f"保存路径: {self.save_path}")
     
     def toggle_recording(self):
-        """切换��制状态"""
+        """切换录制状态"""
         if not self.recording:
             self.start_recording()
         else:
@@ -803,7 +797,7 @@ class StreamingApp(QMainWindow):
                         raise Exception("无法打开摄像头")
                     self.timer.start(int(1000/30))  # 精确的30fps定时器间隔
             
-            # 确保音频设备已经启动
+            # 确保音频设��已经启动
             if not self.recording_audio:
                 self.start_audio()
             
@@ -902,11 +896,8 @@ class StreamingApp(QMainWindow):
                 try:
                     output_path = os.path.splitext(self.video_filename)[0] + '_merged.mp4'
                     
-                    # 使用ffmpeg合并音视频
-                    stream = ffmpeg.input(self.video_filename)
-                    audio = ffmpeg.input(self.audio_filename)
-                    stream = ffmpeg.output(stream, audio, output_path, vcodec='copy', acodec='aac')
-                    ffmpeg.run(stream, overwrite_output=True)
+                    # 使用新的合并方法
+                    self.merge_audio_video(self.video_filename, self.audio_filename, output_path)
                     
                     # 删除原始文件
                     os.remove(self.video_filename)
@@ -933,7 +924,7 @@ class StreamingApp(QMainWindow):
             self.recording_status_label.setText("⚪ 未录制")
             self.recording_time_label.setText("录制时长: 00:00:00")
             
-            # 果没有在直播，则停止预览和释放资源
+            # 如果没有在直播，则停止预览和释放资源
             if not self.streaming:
                 self.timer.stop()
                 if hasattr(self, 'capture_region'):
@@ -945,16 +936,6 @@ class StreamingApp(QMainWindow):
                 
         except Exception as e:
             print(f"停止录制时出错: {str(e)}")
-        finally:
-            # 重置状态
-            self.recording = False
-            self.recording_start_time = None
-            self.recording_timer.stop()
-            
-            # 更新UI
-            self.record_button.setText("开始录制")
-            self.recording_status_label.setText("⚪ 未录制")
-            self.recording_time_label.setText("录制时长: 00:00:00")
     
     def update_recording_time(self):
         """更新录制时长显示"""
@@ -1053,7 +1034,7 @@ class StreamingApp(QMainWindow):
         """选择背景音乐"""
         file_name, _ = QFileDialog.getOpenFileName(
             self,
-            "选择背景音乐",
+            "选��背景音乐",
             "",
             "音频文件 (*.mp3 *.wav *.m4a)"
         )
@@ -1094,7 +1075,7 @@ class StreamingApp(QMainWindow):
             self.bgm_data = wave.open(wav_data, 'rb')
             self.bgm_position = 0
             
-            # 调整样率和通道数以匹配录制设置
+            # 调整样率和通道数以匹配制设置
             if hasattr(self, 'audio_samplerate'):
                 target_samplerate = self.audio_samplerate
             else:
@@ -1105,7 +1086,7 @@ class StreamingApp(QMainWindow):
             
             print("背景音乐已加载")
             
-            # 启动背景音乐处理线程
+            # 启动背景音乐理线程
             self.bgm_thread = threading.Thread(target=self.process_bgm)
             self.bgm_thread.daemon = True
             self.bgm_thread.start()
@@ -1230,7 +1211,7 @@ class StreamingApp(QMainWindow):
                     cpu_percent = process.cpu_percent()
                     memory_percent = process.memory_percent()
                     
-                    # 获取系统总体CPU使用率
+                    # 获取系统体CPU使用率
                     system_cpu = psutil.cpu_percent()
                     print(f"系统CPU使用率: {system_cpu:.1f}%")
                     print(f"FFmpeg CPU使用率: {cpu_percent:.1f}%, 内存使用率: {memory_percent:.1f}%")
@@ -1265,34 +1246,51 @@ class StreamingApp(QMainWindow):
     def merge_audio_video(self, video_file, audio_file, output_file):
         """合并音频和视频文件"""
         try:
-            # 使用正确的流映射
+            # 先检查输入文件是否存在
+            if not os.path.exists(video_file):
+                raise Exception(f"视频文件不存在: {video_file}")
+            if not os.path.exists(audio_file):
+                raise Exception(f"音频文件不存在: {audio_file}")
+            
+            # 使用更简单的合并命令
             command = [
                 'ffmpeg',
-                '-i', video_file,  # 视频输入
-                '-i', audio_file,  # 音频输入
-                '-c:v', 'copy',    # 复制视频流
-                '-c:a', 'aac',     # 将音频转换为 AAC 格式
-                '-map', '0:v:0',   # 从第一个输入取视频流
-                '-map', '1:a:0',   # 从第二个输入取音频流
-                '-shortest',       # 使用最短的流长度
+                '-i', video_file,      # 视频输入
+                '-i', audio_file,      # 音频输入
+                '-c:v', 'copy',        # 复制视频编码
+                '-c:a', 'aac',         # 音频转换为AAC
+                '-strict', 'experimental',  # 允许实验性编码器
+                '-b:a', '192k',        # 音频比特率
+                '-y',                  # 覆盖输出文件
                 output_file
             ]
             
-            # 执行命令
-            result = subprocess.run(
+            # 执行命令并捕获输出
+            process = subprocess.Popen(
                 command,
-                capture_output=True,
-                text=True
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
             )
             
-            if result.returncode != 0:
-                print("FFmpeg错误输出:", result.stderr)
-                raise Exception("FFmpeg命令执行失败")
+            # 实时获取输出
+            stdout, stderr = process.communicate()
+            
+            # 检查执行结果
+            if process.returncode != 0:
+                print("FFmpeg 输出:", stdout)
+                print("FFmpeg 错误:", stderr)
+                raise Exception(f"FFmpeg 返回错误代码: {process.returncode}")
+            
+            # 验证输出文件
+            if not os.path.exists(output_file) or os.path.getsize(output_file) == 0:
+                raise Exception("输出文件无效")
             
             print("音视频合并完成")
             
         except Exception as e:
             print(f"合并音视频时出错: {str(e)}")
+            # 清理失败的输出文件
             if os.path.exists(output_file):
                 try:
                     os.remove(output_file)

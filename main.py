@@ -141,7 +141,7 @@ class StreamingApp(QMainWindow):
         camera_layout.addWidget(self.camera_combo)
         devices_layout.addLayout(camera_layout)
         
-        # 音频输入设备选择
+        # 音频输入设��选择
         audio_in_layout = QHBoxLayout()
         audio_in_label = QLabel("音频输入:")
         self.audio_in_combo = QComboBox()
@@ -172,7 +172,7 @@ class StreamingApp(QMainWindow):
         window_layout.addWidget(self.window_combo)
         devices_layout.addLayout(window_layout)
         
-        # 刷新按钮
+        # 刷新按���
         refresh_button = QPushButton("刷新设备列表")
         refresh_button.clicked.connect(self.refresh_devices)
         devices_layout.addWidget(refresh_button)
@@ -235,7 +235,7 @@ class StreamingApp(QMainWindow):
         recording_group.setLayout(recording_layout)
         control_layout.addWidget(recording_group)
         
-        # 添加所有组到右侧控制面板
+        # ��加所有组到右侧控制面板
         control_layout.addStretch()  # 添加弹性空间
         
         control_panel.setLayout(control_layout)
@@ -275,7 +275,7 @@ class StreamingApp(QMainWindow):
         self.ffmpeg_process = None
         self.stream_pipe = None
         
-        # 添加系统托盘图标支持
+        # 添加系统托盘图标支���
         self.tray_icon = None
         
         # 添加性能监控
@@ -397,7 +397,7 @@ class StreamingApp(QMainWindow):
                 width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
                 height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
             else:
-                raise Exception("无法获取视频尺��")
+                raise Exception("无法获取视频尺寸")
             
             # 确保宽高都是2的倍数
             width = width - (width % 2)
@@ -468,7 +468,7 @@ class StreamingApp(QMainWindow):
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
 
-            # ��建错误输出监控线程
+            # 建错误输出监控线程
             def monitor_ffmpeg():
                 while self.ffmpeg_process and self.ffmpeg_process.poll() is None:
                     error_line = self.ffmpeg_process.stderr.readline()
@@ -553,7 +553,7 @@ class StreamingApp(QMainWindow):
                         
                         # BGR转换
                         frame = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)
-                        record_frame = frame.copy()  # 推流用的帧
+                        record_frame = frame.copy()  # 推流用的��
                         preview_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # 预览用的帧
                         frame_obtained = True
                         self.frame_count += 1
@@ -748,7 +748,7 @@ class StreamingApp(QMainWindow):
             self.save_path_label.setText(f"保存路径: {self.save_path}")
     
     def toggle_recording(self):
-        """切换录制状态"""
+        """切换��制状态"""
         if not self.recording:
             self.start_recording()
         else:
@@ -1261,6 +1261,44 @@ class StreamingApp(QMainWindow):
             
         except Exception as e:
             print(f"性能监控出错: {str(e)}")
+
+    def merge_audio_video(self, video_file, audio_file, output_file):
+        """合并音频和视频文件"""
+        try:
+            # 使用正确的流映射
+            command = [
+                'ffmpeg',
+                '-i', video_file,  # 视频输入
+                '-i', audio_file,  # 音频输入
+                '-c:v', 'copy',    # 复制视频流
+                '-c:a', 'aac',     # 将音频转换为 AAC 格式
+                '-map', '0:v:0',   # 从第一个输入取视频流
+                '-map', '1:a:0',   # 从第二个输入取音频流
+                '-shortest',       # 使用最短的流长度
+                output_file
+            ]
+            
+            # 执行命令
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode != 0:
+                print("FFmpeg错误输出:", result.stderr)
+                raise Exception("FFmpeg命令执行失败")
+            
+            print("音视频合并完成")
+            
+        except Exception as e:
+            print(f"合并音视频时出错: {str(e)}")
+            if os.path.exists(output_file):
+                try:
+                    os.remove(output_file)
+                except:
+                    pass
+            raise
 
 # 在程序开始时添加资源路径检查
 def check_ffmpeg():

@@ -65,26 +65,37 @@
 
 ## 系统要求
 
-- Windows 10/11
-- FFmpeg
+- Windows 7/8/10/11
+- Python 3.7-3.9
+- FFmpeg 4.x
 - 2GB+ RAM
-- DirectX 兼容显卡
+- DirectX 9 及以上显卡
 
 ## 开发指南
 
 ### 环境设置
 
 ```bash
+# 安装 Python 3.7-3.9
+# 推荐使用 Python 3.7.9: https://www.python.org/downloads/release/python-379/
+
 # 克隆仓库
 git clone https://github.com/your-username/live.git
 cd live
 
 # 安装依赖
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 # 运行程序
 python main.py
 ```
+
+### 兼容性说明
+
+- Windows 7 用户请使用 Python 3.7.9
+- 如遇到 DLL 缺失，请安装 Visual C++ Redistributable 2015-2019
+- 部分功能在 Windows 7 上可能需要额外配置
 
 ## 常见问题
 

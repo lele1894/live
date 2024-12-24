@@ -39,11 +39,18 @@ jobs:
         $version = "${{ github.event.inputs.version }}"
         $version_parts = $version.Split('.')
         $content = Get-Content file_version_info.txt -Raw
-        $content = $content -replace "filevers=\([^)]+\)", "filevers=($version_parts[0], $version_parts[1], $version_parts[2], 0)"
-        $content = $content -replace "prodvers=\([^)]+\)", "prodvers=($version_parts[0], $version_parts[1], $version_parts[2], 0)"
-        $content = $content -replace "FileVersion', u'[^']+", "FileVersion', u'$version"
-        $content = $content -replace "ProductVersion', u'[^']+", "ProductVersion', u'$version"
-        $content | Set-Content file_version_info.txt -Force
+        
+        # 更新版本号元组
+        $version_tuple = "($($version_parts[0]), $($version_parts[1]), $($version_parts[2]), 0)"
+        $content = $content -replace "filevers=\([^)]+\)", "filevers=$version_tuple"
+        $content = $content -replace "prodvers=\([^)]+\)", "prodvers=$version_tuple"
+        
+        # 更新版本字符串
+        $content = $content -replace "(?<=FileVersion', ')[^']+", $version
+        $content = $content -replace "(?<=ProductVersion', ')[^']+", $version
+        
+        # 保存更新后的内容
+        $content | Set-Content file_version_info.txt -Force -Encoding UTF8
       shell: pwsh
       
     - name: Build EXE

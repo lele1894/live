@@ -1,0 +1,10 @@
+sounddevice
+soundcard
+mss
+pydub
+psutil
+numpy
+opencv-python
+ffmpeg-python
+PyQt6
+pywin32 

@@ -34,7 +34,7 @@
 
 ## 快速开始
 
-1. 下载最新版本的 [live.exe](https://github.com/your-username/live/releases)
+1. 下载最新版本的程序
 2. 准备 FFmpeg（见上文）
 3. 运行程序，选择捕获模式和音频设置
 4. 开始直播或录制
@@ -81,26 +81,10 @@ cd live
 
 # 安装依赖
 pip install -r requirements.txt
-```
-# 运行
-```bash
-# 运行
+
+# 运行程序
 python main.py
 ```
-### 构建exe程序
-
-```bash
-# 使用 PyInstaller 打包
-pyinstaller --clean live.spec
-```
-
-### 版本发布
-
-使用 GitHub Actions 自动构建和发布：
-1. 进入 Actions 页面
-2. 选择 "Build EXE"
-3. 输入版本号
-4. 运行工作流
 
 ## 常见问题
 

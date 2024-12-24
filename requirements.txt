@@ -1,10 +1,20 @@
-sounddevice
-soundcard
-mss
-pydub
-psutil
-numpy
-opencv-python
-ffmpeg-python
-PyQt6
-pywin32 
+# GUI
+PyQt6>=6.4.0
+pywin32>=305
+
+# 视频处理
+opencv-python>=4.7.0
+mss>=9.0.1
+ffmpeg-python>=0.2.0
+
+# 音频处理
+sounddevice>=0.4.6
+soundcard>=0.4.2
+pydub>=0.25.1
+
+# 系统相关
+psutil>=5.9.0
+numpy>=1.24.0
+
+# 打包工具
+pyinstaller>=6.0.0 

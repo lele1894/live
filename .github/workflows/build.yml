@@ -38,18 +38,44 @@ jobs:
       run: |
         $version = "${{ github.event.inputs.version }}"
         $version_parts = $version.Split('.')
-        $content = Get-Content file_version_info.txt -Raw
         
-        # 更新版本号元组
-        $version_tuple = "($($version_parts[0]), $($version_parts[1]), $($version_parts[2]), 0)"
-        $content = $content -replace "filevers=\([^)]+\)", "filevers=$version_tuple"
-        $content = $content -replace "prodvers=\([^)]+\)", "prodvers=$version_tuple"
+        # 创建新的版本信息文件内容
+        $content = @"
+        VSVersionInfo(
+          ffi=FixedFileInfo(
+            filevers=($($version_parts[0]), $($version_parts[1]), $($version_parts[2]), 0),
+            prodvers=($($version_parts[0]), $($version_parts[1]), $($version_parts[2]), 0),
+            mask=0x3f,
+            flags=0x0,
+            OS=0x40004,
+            fileType=0x1,
+            subtype=0x0,
+            date=(0, 0)
+          ),
+          kids=[
+            StringFileInfo([
+              StringTable(
+                '080404b0',
+                [
+                  StringStruct('CompanyName', 'Your Company'),
+                  StringStruct('FileDescription', '简易直播软件'),
+                  StringStruct('FileVersion', '$version'),
+                  StringStruct('InternalName', 'live'),
+                  StringStruct('LegalCopyright', 'Copyright (C) 2024'),
+                  StringStruct('OriginalFilename', 'live.exe'),
+                  StringStruct('ProductName', '简易直播软件'),
+                  StringStruct('ProductVersion', '$version')
+                ]
+              )
+            ]),
+            VarFileInfo([
+              VarStruct('Translation', [2052, 1200])
+            ])
+          ]
+        )
+        "@
         
-        # 更新版本字符串
-        $content = $content -replace "(?<=FileVersion', ')[^']+", $version
-        $content = $content -replace "(?<=ProductVersion', ')[^']+", $version
-        
-        # 保存更新后的内容
+        # 保存新的版本信息文件
         $content | Set-Content file_version_info.txt -Force -Encoding UTF8
       shell: pwsh
       
